@@ -178,10 +178,6 @@ namespace diskann {
 
     data = new T[npts * dim];
     reader.read((char*) data, npts * dim * sizeof(T));
-
-    //    diskann::cout << "Last bytes: "
-    //                  << getValues<T>(data + (npts - 2) * dim, dim);
-    //    diskann::cout << "Finished reading bin file." << std::endl;
   }
 
 #ifdef EXEC_ENV_OLS

@@ -189,8 +189,8 @@ inline int get_num_parts(const char *filename) {
   return num_parts;
 }
 
-template<typename T>
-inline void load_bin_as_float(const char *filename, float *&data, size_t &npts,
+template<typename T, typename T_out>
+inline void load_bin(const char *filename, T_out *&data, size_t &npts,
                               size_t &ndims, int part_num) {
   std::ifstream reader(filename, std::ios::binary);
   std::cout << "Reading bin file " << filename << " ...\n";
@@ -213,18 +213,19 @@ inline void load_bin_as_float(const char *filename, float *&data, size_t &npts,
   reader.read((char *) data_T, sizeof(T) * nptsuint64_t * ndimsuint64_t);
   std::cout << "Finished reading part of the bin file." << std::endl;
   reader.close();
-  data = aligned_malloc<float>(nptsuint64_t * ndimsuint64_t, ALIGNMENT);
+  data = aligned_malloc<T_out>(nptsuint64_t * ndimsuint64_t, ALIGNMENT);
 #pragma omp parallel for schedule(dynamic, 32768)
   for (int64_t i = 0; i < (int64_t) nptsuint64_t; i++) {
     for (int64_t j = 0; j < (int64_t) ndimsuint64_t; j++) {
-      float cur_val_float = (float) data_T[i * ndimsuint64_t + j];
+      T_out cur_val = (T_out) data_T[i * ndimsuint64_t + j];
       std::memcpy((char *) (data + i * ndimsuint64_t + j),
-                  (char *) &cur_val_float, sizeof(float));
+                  (char *) &cur_val, sizeof(T_out));
     }
   }
   delete[] data_T;
-  std::cout << "Finished converting part data to float." << std::endl;
+  std::cout << "Finished converting part " << part_num << " of data." << std::endl;
 }
+
 
 template<typename T>
 inline void save_bin(const std::string filename, T *data, size_t npts,
@@ -264,6 +265,38 @@ inline void save_groundtruth_as_one_file(const std::string filename,
   std::cout << "Finished writing truthset" << std::endl;
 }
 
+inline void save_groundtruth_as_csv_int8(const std::string filename,
+                                         int32_t *ids, int8_t *base_data,
+                                         int8_t *query_data, size_t nqueries,
+                                         size_t ngt, size_t ndims) {
+  std::ofstream writer(filename, std::ios::out);
+
+  for (size_t q = 0; q < nqueries; ++q) {
+    writer << "qv:\t";
+    for (size_t d = 0; d < ndims; ++d) {
+      writer << (int) query_data[q * ndims + d];
+      if (d < ndims - 1)
+        writer << ",";
+      else
+        writer << "\n";
+    }
+    for (size_t i = 0; i < ngt; ++i) {
+      writer << "v:\t";
+      auto vec = ids[q * ngt + i];
+      for (size_t d = 0; d < ndims; ++d) {
+        writer << (int) base_data[vec * ndims + d];
+        if (d < ndims - 1)
+          writer << ",";
+        else
+          writer << "\n";
+      }
+    }
+  }
+
+  writer.close();
+  std::cout << "Finished writing truthset" << std::endl;
+}
+
 template<typename T>
 int aux_main(int argv, char **argc) {
  
@@ -277,7 +310,7 @@ int aux_main(int argv, char **argc) {
   float *query_data;
 
   int num_parts = get_num_parts<T>(base_file.c_str());
-  load_bin_as_float<T>(query_file.c_str(), query_data, nqueries, dim, 0);
+  load_bin<T, float>(query_file.c_str(), query_data, nqueries, dim, 0);
 
   std::vector<std::vector<std::pair<uint32_t, float>>> results(nqueries);
 
@@ -286,7 +319,7 @@ int aux_main(int argv, char **argc) {
 
   for (int p = 0; p < num_parts; p++) {
     size_t start_id = p * PARTSIZE;
-    load_bin_as_float<T>(base_file.c_str(), base_data, npoints, dim, p);
+    load_bin<T, float>(base_file.c_str(), base_data, npoints, dim, p);
     int *  closest_points_part = new int[nqueries * k];
     float *dist_closest_points_part = new float[nqueries * k];
 
@@ -317,6 +350,19 @@ int aux_main(int argv, char **argc) {
 
   save_groundtruth_as_one_file(gt_file, closest_points, dist_closest_points,
                                nqueries, k);
+  /*{
+    T *base_data_native;
+    T *query_data_native;
+    size_t npts, nqueries, ndims;
+
+    load_bin<T, T>(argc[2], base_data_native, npts, ndims, 0);
+    load_bin<T, T>(argc[3], query_data_native, nqueries, ndims, 0);
+    save_groundtruth_as_csv_int8(gt_file, closest_points, base_data_native, query_data_native,
+      nqueries, k, dim);
+    delete[] base_data_native;
+    delete[] query_data_native;
+  }*/
+
   diskann::aligned_free(query_data);
   delete[] closest_points;
   delete[] dist_closest_points;
