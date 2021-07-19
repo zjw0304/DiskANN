@@ -7,21 +7,30 @@
 
 void block_convert(std::ofstream& writer, int8_t* write_buf,
                    std::ifstream& reader, float* read_buf, _u64 npts,
-                   _u64 ndims, float bias, float scale) {
+                   _u64 ndims, float bias, float scale, bool normalize) {
   reader.read((char*) read_buf, npts * ndims * sizeof(float));
 
   for (_u64 i = 0; i < npts; i++) {
+    
+    float norm = 1.0;
+    if (normalize) {
+      float sq_norm = 0.0;
+      for (_u64 d = 0; d < ndims; d++) {
+        sq_norm += read_buf[d + i * ndims] * read_buf[d + i * ndims];
+      }
+      norm = std::sqrt(sq_norm);
+    }
     for (_u64 d = 0; d < ndims; d++) {
       write_buf[d + i * ndims] =
-          (int8_t)((read_buf[d + i * ndims] - bias) * (256.0 / scale));
+          (int8_t)((read_buf[d + i * ndims] / norm - bias) * (256.0 / scale));
     }
   }
   writer.write((char*) write_buf, npts * ndims);
 }
 
 int main(int argc, char** argv) {
-  if (argc != 5) {
-    std::cout << "Usage: " << argv[0] << "  input_bin  output_tsv  bias  scale"
+  if (argc != 6) {
+    std::cout << "Usage: " << argv[0] << "  input_bin  output_tsv  bias  scale normalize<0/1>"
               << std::endl;
     exit(-1);
   }
@@ -44,6 +53,7 @@ int main(int argc, char** argv) {
   auto          write_buf = new int8_t[blk_size * ndims];
   float         bias = atof(argv[3]);
   float         scale = atof(argv[4]);
+  bool          normalize = atoi(argv[5]);
 
   writer.write((char*) (&npts_u32), sizeof(_u32));
   writer.write((char*) (&ndims_u32), sizeof(_u32));
@@ -51,7 +61,7 @@ int main(int argc, char** argv) {
   for (_u64 i = 0; i < nblks; i++) {
     _u64 cblk_size = std::min(npts - i * blk_size, blk_size);
     block_convert(writer, write_buf, reader, read_buf, cblk_size, ndims, bias,
-                  scale);
+                  scale, normalize);
     std::cout << "Block #" << i << " written" << std::endl;
   }
 
