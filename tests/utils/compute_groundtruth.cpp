@@ -350,19 +350,7 @@ int aux_main(int argv, char **argc) {
 
   save_groundtruth_as_one_file(gt_file, closest_points, dist_closest_points,
                                nqueries, k);
-  /*{
-    T *base_data_native;
-    T *query_data_native;
-    size_t npts, nqueries, ndims;
-
-    load_bin<T, T>(argc[2], base_data_native, npts, ndims, 0);
-    load_bin<T, T>(argc[3], query_data_native, nqueries, ndims, 0);
-    save_groundtruth_as_csv_int8(gt_file, closest_points, base_data_native, query_data_native,
-      nqueries, k, dim);
-    delete[] base_data_native;
-    delete[] query_data_native;
-  }*/
-
+ 
   diskann::aligned_free(query_data);
   delete[] closest_points;
   delete[] dist_closest_points;
