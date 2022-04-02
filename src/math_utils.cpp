@@ -222,6 +222,8 @@ namespace math_utils {
     }
   }
 
+
+
 }  // namespace math_utils
 
 namespace kmeans {
@@ -334,8 +336,8 @@ namespace kmeans {
       residual = lloyds_iter(data, num_points, dim, centers, num_centers,
                              docs_l2sq, closest_docs, closest_center);
 
-      diskann::cout << "Lloyd's iter " << i
-                    << "  dist_sq residual: " << residual << std::endl;
+//      diskann::cout << "Lloyd's iter " << i
+//                    << "  dist_sq residual: " << residual << std::endl;
 
       if (((i != 0) && ((old_residual - residual) / residual) < 0.00001) ||
           (residual < std::numeric_limits<float>::epsilon())) {
@@ -360,11 +362,11 @@ namespace kmeans {
     //	pivot_data = new float[num_centers * dim];
 
     std::vector<size_t> picked;
-    diskann::cout << "Selecting " << num_centers << " pivots from "
-                  << num_points << " points using ";
+//    diskann::cout << "Selecting " << num_centers << " pivots from "
+//                  << num_points << " points using ";
     std::random_device rd;
     auto               x = rd();
-    diskann::cout << "random seed " << x << std::endl;
+//    diskann::cout << "random seed " << x << std::endl;
     std::mt19937                          generator(x);
     std::uniform_int_distribution<size_t> distribution(0, num_points - 1);
 
@@ -392,11 +394,11 @@ namespace kmeans {
     }
 
     std::vector<size_t> picked;
-    diskann::cout << "Selecting " << num_centers << " pivots from "
-                  << num_points << " points using ";
+//    diskann::cout << "Selecting " << num_centers << " pivots from "
+//                  << num_points << " points using ";
     std::random_device rd;
     auto               x = rd();
-    diskann::cout << "random seed " << x << ": " << std::flush;
+//    diskann::cout << "random seed " << x << ": " << std::flush;
     std::mt19937                          generator(x);
     std::uniform_real_distribution<>      distribution(0, 1);
     std::uniform_int_distribution<size_t> int_dist(0, num_points - 1);
@@ -454,11 +456,12 @@ namespace kmeans {
                                                data + tmp_pivot * dim, dim));
       }
       num_picked++;
-      if (num_picked % 32 == 0)
-        diskann::cout << "." << std::flush;
+  //    if (num_picked % 32 == 0)
+  //      diskann::cout << "." << std::flush;
     }
-    diskann::cout << "done." << std::endl;
+  //  diskann::cout << "done." << std::endl;
     delete[] dist;
   }
 
 }  // namespace kmeans
+

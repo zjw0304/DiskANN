@@ -910,7 +910,7 @@ namespace diskann {
   template<typename T>
   int build_disk_index(const char *dataFilePath, const char *indexFilePath,
                         const char *    indexBuildParameters,
-                        diskann::Metric compareMetric) {
+                        diskann::Metric compareMetric, bool use_opq) {
     std::stringstream parser;
     parser << std::string(indexBuildParameters);
     std::string              cur_param;
@@ -1078,9 +1078,15 @@ namespace diskann {
     if (compareMetric == diskann::Metric::INNER_PRODUCT)
       make_zero_mean = false;
 
+    if (!use_opq) {
     generate_pq_pivots(train_data, train_size, (uint32_t) dim, 256,
                        (uint32_t) num_pq_chunks, NUM_KMEANS_REPS,
                        pq_pivots_path, make_zero_mean);
+    } else {
+    generate_opq_pivots(train_data, train_size, (uint32_t) dim, 256,
+                       (uint32_t) num_pq_chunks, 
+                       pq_pivots_path, false);
+    }
 
     generate_pq_data_from_pivots<T>(data_file_to_use.c_str(), 256,
                                     (uint32_t) num_pq_chunks, pq_pivots_path,
@@ -1177,13 +1183,13 @@ namespace diskann {
 
   template DISKANN_DLLEXPORT int build_disk_index<int8_t>(
       const char *dataFilePath, const char *indexFilePath,
-      const char *indexBuildParameters, diskann::Metric compareMetric);
+      const char *indexBuildParameters, diskann::Metric compareMetric, bool use_opq);
   template DISKANN_DLLEXPORT int build_disk_index<uint8_t>(
       const char *dataFilePath, const char *indexFilePath,
-      const char *indexBuildParameters, diskann::Metric compareMetric);
+      const char *indexBuildParameters, diskann::Metric compareMetric, bool use_opq);
   template DISKANN_DLLEXPORT int build_disk_index<float>(
       const char *dataFilePath, const char *indexFilePath,
-      const char *indexBuildParameters, diskann::Metric compareMetric);
+      const char *indexBuildParameters, diskann::Metric compareMetric, bool use_opq);
 
   template DISKANN_DLLEXPORT int build_merged_vamana_index<int8_t>(
       std::string base_file, diskann::Metric compareMetric, unsigned L,
