@@ -236,6 +236,11 @@ void singular_value_decomposition(long long int m,     // number of rows in matr
     delete[] iwork;
 
     // do something useful with U, S, Vt ...
+    for (_u32 i =0; i < numberOfSingularValues; i++) {
+      std::cout <<s[i] <<" ";
+    }
+
+   std::cout<<std::endl;
 
     // and then clean them up too:
     delete[] s;

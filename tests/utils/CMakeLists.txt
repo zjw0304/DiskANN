@@ -132,6 +132,15 @@ else()
 endif()
 
 
+add_executable(test_svd test_svd.cpp)
+if(MSVC)
+	target_link_options(test_svd PRIVATE /MACHINE:x64 /DEBUG:FULL)
+	target_link_libraries(test_svd debug ${CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG}/diskann_dll.lib)
+	target_link_libraries(test_svd optimized ${CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE}/diskann_dll.lib)
+else() 
+	target_link_libraries(test_svd ${PROJECT_NAME} -ltcmalloc)
+endif()
+
 add_executable(generate_pq generate_pq.cpp)
 if(MSVC)
 	target_link_options(generate_pq PRIVATE /MACHINE:x64 /DEBUG:FULL)
@@ -140,6 +149,7 @@ if(MSVC)
 else() 
 	target_link_libraries(generate_pq ${PROJECT_NAME} -ltcmalloc)
 endif()
+
 
 add_executable(partition_data partition_data.cpp)
 if(MSVC)
