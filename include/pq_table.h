@@ -141,12 +141,14 @@ namespace diskann {
       for (_u32 d=0; d < ndims; d++) {
         query_vec[d] -= centroid[d];
       }
+      std::vector<float> tmp(ndims,0);
       if (use_rotation) {
       for (_u32 d=0; d < ndims; d++) {
         for (_u32 d1=0; d1 < ndims; d1++) {
-        query_vec[d] += query_vec[d1]*rotmat_T[d1*ndims+d];
+        tmp[d] += query_vec[d1]*rotmat_T[d1*ndims+d];
         }
       }
+      std::memcpy(query_vec, tmp.data(), ndims*sizeof(float));    
       }
   }
 
