@@ -60,7 +60,7 @@ namespace math_utils {
                          float* cur_pivot_data, size_t num_centers,
                          uint32_t* closest_centers, bool to_subtract);
 
-  void singular_value_decomposition(int m,     // number of rows in matrix
+  DISKANN_DLLEXPORT void singular_value_decomposition(int m,     // number of rows in matrix
                                 int n,     // number of columns in matrix
                                 int lda,   // leading dimension of matrix
                                 double *a);
