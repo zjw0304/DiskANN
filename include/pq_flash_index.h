@@ -43,6 +43,7 @@ namespace diskann {
         nullptr;  // MUST BE AT LEAST  [N_CHUNKS * MAX_DEGREE]
     T *    aligned_query_T = nullptr;
     float *aligned_query_float = nullptr;
+    float *rotated_query = nullptr;
 
     void reset() {
       coord_idx = 0;
