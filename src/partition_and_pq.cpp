@@ -250,7 +250,6 @@ int generate_pq_pivots(const float *passed_train_data, size_t num_train,
     }
   }
 
-  std::vector<uint32_t> rearrangement;
   std::vector<uint32_t> chunk_offsets;
 
   size_t low_val = (size_t) std::floor((double) dim / (double) num_pq_chunks);
@@ -286,28 +285,15 @@ int generate_pq_pivots(const float *passed_train_data, size_t num_train,
     }
   }
 
-  rearrangement.clear();
   chunk_offsets.clear();
   chunk_offsets.push_back(0);
 
   for (uint32_t b = 0; b < num_pq_chunks; b++) {
-    diskann::cout << "[ ";
-    for (auto p : bin_to_dims[b]) {
-      rearrangement.push_back(p);
-      diskann::cout << p << ",";
-    }
-    diskann::cout << "] " << std::endl;
     if (b > 0)
       chunk_offsets.push_back(chunk_offsets[b - 1] +
                               (unsigned) bin_to_dims[b - 1].size());
   }
   chunk_offsets.push_back(dim);
-
-  diskann::cout << "\nCross-checking rearranged order of coordinates:"
-                << std::endl;
-  for (auto p : rearrangement)
-    diskann::cout << p << " ";
-  diskann::cout << std::endl;
 
   full_pivot_data.reset(new float[num_centers * dim]);
 
@@ -353,9 +339,6 @@ int generate_pq_pivots(const float *passed_train_data, size_t num_train,
   std::string centroids_path = pq_pivots_path + "_centroid.bin";
   diskann::save_bin<float>(centroids_path.c_str(), centroid.get(), (size_t) dim,
                            1);
-  std::string rearrangement_path = pq_pivots_path + "_rearrangement_perm.bin";
-  diskann::save_bin<uint32_t>(rearrangement_path.c_str(), rearrangement.data(),
-                              rearrangement.size(), 1);
   std::string chunk_offsets_path = pq_pivots_path + "_chunk_offsets.bin";
   diskann::save_bin<uint32_t>(chunk_offsets_path.c_str(), chunk_offsets.data(),
                               chunk_offsets.size(), 1);
@@ -420,7 +403,6 @@ int generate_opq_pivots(const float *passed_train_data, size_t num_train,
     }
   }
 
-  std::vector<uint32_t> rearrangement;
   std::vector<uint32_t> chunk_offsets;
 
   size_t low_val = (size_t) std::floor((double) dim / (double) num_pq_chunks);
@@ -456,28 +438,15 @@ int generate_opq_pivots(const float *passed_train_data, size_t num_train,
     }
   }
 
-  rearrangement.clear();
   chunk_offsets.clear();
   chunk_offsets.push_back(0);
 
   for (uint32_t b = 0; b < num_pq_chunks; b++) {
-    diskann::cout << "[ ";
-    for (auto p : bin_to_dims[b]) {
-      rearrangement.push_back(p);
-      diskann::cout << p << ",";
-    }
-    diskann::cout << "] " << std::endl;
     if (b > 0)
       chunk_offsets.push_back(chunk_offsets[b - 1] +
                               (unsigned) bin_to_dims[b - 1].size());
   }
   chunk_offsets.push_back(dim);
-
-  diskann::cout << "\nCross-checking rearranged order of coordinates:"
-                << std::endl;
-  for (auto p : rearrangement)
-    diskann::cout << p << " ";
-  diskann::cout << std::endl;
 
   full_pivot_data.reset(new float[num_centers * dim]);
   rotmat_T.reset(new float[dim*dim]);
@@ -561,6 +530,11 @@ int generate_opq_pivots(const float *passed_train_data, size_t num_train,
                 exit(-1);
         }
 
+    std::cout<<"Top sigular values: " << std::endl;
+    for (_u32 s1 = 0; s1 < dim; s1++)
+    std::cout<<singular_values[s1] <<" ";
+    std::cout<< std::endl;
+
 // compute the new rotation matrix from the singular vectors as R^T = U V^T
     cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, (MKL_INT) dim,
                 (MKL_INT) dim, (MKL_INT) dim, 1.0f, Umat.get(),
@@ -574,9 +548,6 @@ int generate_opq_pivots(const float *passed_train_data, size_t num_train,
   std::string centroids_path = opq_pivots_path + "_centroid.bin";
   diskann::save_bin<float>(centroids_path.c_str(), centroid.get(), (size_t) dim,
                            1);
-  std::string rearrangement_path = opq_pivots_path + "_rearrangement_perm.bin";
-  diskann::save_bin<uint32_t>(rearrangement_path.c_str(), rearrangement.data(),
-                              rearrangement.size(), 1);
   std::string chunk_offsets_path = opq_pivots_path + "_chunk_offsets.bin";
   diskann::save_bin<uint32_t>(chunk_offsets_path.c_str(), chunk_offsets.data(),
                               chunk_offsets.size(), 1);
@@ -612,7 +583,6 @@ int generate_pq_data_from_pivots(const std::string data_file,
   std::unique_ptr<float[]>    full_pivot_data;
   std::unique_ptr<float[]>    rotmat_T;
   std::unique_ptr<float[]>    centroid;
-  std::unique_ptr<uint32_t[]> rearrangement;
   std::unique_ptr<uint32_t[]> chunk_offsets;
 
   std::string inflated_pq_file = pq_compressed_vectors_path + "_inflated.bin";
@@ -629,14 +599,6 @@ int generate_pq_data_from_pivots(const std::string data_file,
     if (numr != dim || numc != 1) {
       diskann::cout << "Error reading centroid file." << std::endl;
       throw diskann::ANNException("Error reading centroid file.", -1,
-                                  __FUNCSIG__, __FILE__, __LINE__);
-    }
-    std::string rearrangement_path = pq_pivots_path + "_rearrangement_perm.bin";
-    diskann::load_bin<uint32_t>(rearrangement_path.c_str(), rearrangement, numr,
-                                numc);
-    if (numr != dim || numc != 1) {
-      diskann::cout << "Error reading rearrangement file." << std::endl;
-      throw diskann::ANNException("Error reading rearrangement file.", -1,
                                   __FUNCSIG__, __FILE__, __LINE__);
     }
     std::string chunk_offsets_path = pq_pivots_path + "_chunk_offsets.bin";
@@ -741,7 +703,7 @@ int generate_pq_data_from_pivots(const std::string data_file,
     for (uint64_t p = 0; p < cur_blk_size; p++) {
       for (uint64_t d = 0; d < dim; d++) {
         block_data_float[p * dim + d] =
-            block_data_tmp[p * dim + rearrangement[d]];
+            block_data_tmp[p * dim + d];
       }
     }
 
