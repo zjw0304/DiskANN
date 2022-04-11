@@ -13,7 +13,7 @@ bool generate_pq(const std::string& data_path,
                  const float sampling_rate) {
   std::string pq_pivots_path = index_prefix_path + "_pq_pivots.bin";
   std::string pq_compressed_vectors_path =
-      index_prefix_path + "_compressed.bin";
+      index_prefix_path + "_pq_compressed.bin";
 
   // generates random sample and sets it to train_data and updates train_size
   size_t train_size, train_dim;
