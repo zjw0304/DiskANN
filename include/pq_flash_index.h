@@ -24,6 +24,29 @@
 #define MAX_N_SECTOR_READS 128
 #define MAX_PQ_CHUNKS 256
 
+#define READ_U64(stream, val) stream.read((char *) &val, sizeof(_u64))
+#define READ_UNSIGNED(stream, val) stream.read((char *) &val, sizeof(unsigned))
+
+// sector # on disk where node_id is present
+#define NODE_SECTOR_NO(node_id) (((_u64)(node_id)) / nnodes_per_sector + 1)
+
+// obtains region of sector containing node
+#define OFFSET_TO_NODE(sector_buf, node_id) \
+  ((char *) sector_buf + (((_u64) node_id) % nnodes_per_sector) * max_node_len)
+
+// offset into sector where node_id's nhood starts
+#define NODE_SECTOR_OFFSET(sector_buf, node_id) \
+  ((char *) sector_buf +                        \
+   ((((_u64) node_id) % nnodes_per_sector) * max_node_len))
+
+// returns region of `node_buf` containing [NNBRS][NBR_ID(_u32)]
+#define OFFSET_TO_NODE_NHOOD(node_buf) \
+  (unsigned *) ((char *) node_buf + disk_bytes_per_point)
+
+// returns region of `node_buf` containing [COORD(T)]
+#define OFFSET_TO_NODE_COORDS(node_buf) (T *) (node_buf)
+
+
 namespace diskann {
   template<typename T>
   struct QueryScratch {
@@ -100,6 +123,13 @@ namespace diskann {
 
     DISKANN_DLLEXPORT void cache_bfs_levels(_u64 num_nodes_to_cache,
                                             std::vector<uint32_t> &node_list);
+
+DISKANN_DLLEXPORT void extract_bfs_levels(_u64 start_node, _u32 num_levels, tsl::robin_set<_u32> &active_nodes, 
+                                         std::vector<std::pair<_u32, _u32>> &node_list_with_counts);
+ DISKANN_DLLEXPORT void  generate_new_disk_ordering(std::vector<_u32> &output_order);
+
+ DISKANN_DLLEXPORT void  reorder_disk_layout(std::vector<_u32> &ordering, std::string out_index_prefix);
+
 
     //    DISKANN_DLLEXPORT void cache_from_samples(const std::string
     //    sample_file, _u64 num_nodes_to_cache, std::vector<uint32_t>
