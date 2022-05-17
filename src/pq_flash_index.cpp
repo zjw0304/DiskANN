@@ -211,7 +211,7 @@ namespace diskann {
   }
 
   template<typename T>
-  void PQFlashIndex<T>::load_cache_list(std::vector<uint32_t> &node_list) {
+  void PQFlashIndex<T>::load_cache_list(std::vector<uint32_t> &node_list, bool cache_only_graph) {
     diskann::cout << "Loading the cache list into memory.." << std::flush;
     _u64 num_cached_nodes = node_list.size();
 
@@ -227,15 +227,20 @@ namespace diskann {
     nhood_cache_buf = new unsigned[num_cached_nodes * (max_degree + 1)];
     memset(nhood_cache_buf, 0, num_cached_nodes * (max_degree + 1));
 
+
+    if (!cache_only_graph) {
     _u64 coord_cache_buf_len = num_cached_nodes * aligned_dim;
     diskann::alloc_aligned((void **) &coord_cache_buf,
                            coord_cache_buf_len * sizeof(T), 8 * sizeof(T));
     memset(coord_cache_buf, 0, coord_cache_buf_len * sizeof(T));
+    }
 
-    size_t BLOCK_SIZE = 8;
+    size_t BLOCK_SIZE = 1024;
     size_t num_blocks = DIV_ROUND_UP(num_cached_nodes, BLOCK_SIZE);
 
     for (_u64 block = 0; block < num_blocks; block++) {
+      if (block % 100 == 0)
+      std::cout<<"Finished " << block << " blocks out of " << num_blocks <<". \r" <<std::flush;
       _u64 start_idx = block * BLOCK_SIZE;
       _u64 end_idx = (std::min)(num_cached_nodes, (block + 1) * BLOCK_SIZE);
       std::vector<AlignedRead>             read_reqs;
@@ -263,10 +268,11 @@ namespace diskann {
         auto &nhood = nhoods[i];
         char *node_buf = OFFSET_TO_NODE(nhood.second, nhood.first);
         T *   node_coords = OFFSET_TO_NODE_COORDS(node_buf);
+        if (!cache_only_graph) {        
         T *   cached_coords = coord_cache_buf + node_idx * aligned_dim;
         memcpy(cached_coords, node_coords, disk_bytes_per_point);
         coord_cache.insert(std::make_pair(nhood.first, cached_coords));
-
+        }
         // insert node nhood into nhood_cache
         unsigned *node_nhood = OFFSET_TO_NODE_NHOOD(node_buf);
 
@@ -285,6 +291,13 @@ namespace diskann {
     this->thread_data.push(this_thread_data);
     this->thread_data.push_notify_all();
     diskann::cout << "..done." << std::endl;
+  }
+
+  template<typename T>
+  void PQFlashIndex<T>::cache_entire_graph_in_memory() {
+  std::vector<_u32> node_list(this->num_points + this->num_frozen_points);
+  std::iota(node_list.begin(), node_list.end(), 0);
+  load_cache_list(node_list, true);
   }
 
 #ifdef EXEC_ENV_OLS
@@ -838,6 +851,7 @@ namespace diskann {
       data = this->thread_data.pop();
     }
 
+
     if (beam_width > MAX_N_SECTOR_READS)
       throw ANNException("Beamwidth can not be higher than MAX_N_SECTOR_READS",
                          -1, __FUNCSIG__, __FILE__, __LINE__);
@@ -1015,9 +1029,10 @@ namespace diskann {
 
       // process cached nhoods
       for (auto &cached_nhood : cached_nhoods) {
+        float cur_expanded_dist = std::numeric_limits<float>::max();
         auto  global_cache_iter = coord_cache.find(cached_nhood.first);
+        if (global_cache_iter != coord_cache.end()) {
         T *   node_fp_coords_copy = global_cache_iter->second;
-        float cur_expanded_dist;
         if (!use_disk_index_pq) {
           cur_expanded_dist = dist_cmp->compare(query, node_fp_coords_copy,
                                                 (unsigned) aligned_dim);
@@ -1028,6 +1043,14 @@ namespace diskann {
           else
             cur_expanded_dist = disk_pq_table.l2_distance( // disk_pq does not support OPQ yet
                 query_float, (_u8 *) node_fp_coords_copy);
+        }
+        } else {
+          for (_u32 pos = 0; pos < cur_list_size; pos++) {
+            if (retset[pos].id == cached_nhood.first) {
+              cur_expanded_dist = retset[pos].distance;
+              break;
+            }
+          }
         }
         full_retset.push_back(
             Neighbor((unsigned) cached_nhood.first, cur_expanded_dist, true));
@@ -1166,6 +1189,7 @@ namespace diskann {
                 return left.distance < right.distance;
               });
 
+
     if (use_reorder_data) {
       if (!(this->reorder_data_exists)) {
         throw ANNException(
@@ -1175,6 +1199,7 @@ namespace diskann {
       }
 
       std::vector<AlignedRead> vec_read_reqs;
+
 
       if (full_retset.size() > k_search * FULL_PRECISION_REORDER_MULTIPLIER)
         full_retset.erase(
@@ -1206,6 +1231,10 @@ namespace diskann {
         auto id = full_retset[i].id;
         auto location =
             (sector_scratch + i * SECTOR_LEN) + VECTOR_SECTOR_OFFSET(id);
+        T *node_fp_coords_copy = data_buf;
+
+        memcpy(node_fp_coords_copy, location, this->data_dim*sizeof(T));
+
         full_retset[i].distance =
             dist_cmp->compare(query, (T *) location, this->data_dim);
       }

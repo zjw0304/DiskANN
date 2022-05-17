@@ -57,7 +57,7 @@ int search_disk_index(
     const std::string& result_output_prefix, const std::string& query_file,
     std::string& gt_file, const unsigned num_threads, const unsigned recall_at,
     const unsigned beamwidth, const unsigned num_nodes_to_cache,
-    const std::vector<unsigned>& Lvec, const bool use_reorder_data = false) {
+    const std::vector<unsigned>& Lvec, const bool use_reorder_data = false, const bool cache_all_graph_nodes = false) {
   diskann::cout << "Search parameters: #threads: " << num_threads << ", ";
   if (beamwidth <= 0)
     diskann::cout << "beamwidth to be optimized for each L value" << std::endl;
@@ -106,16 +106,21 @@ int search_disk_index(
     return res;
   }
   // cache bfs levels
+  if (!cache_all_graph_nodes) {
   std::vector<uint32_t> node_list;
   diskann::cout << "Caching " << num_nodes_to_cache
                 << " BFS nodes around medoid(s)" << std::endl;
-  //_pFlashIndex->cache_bfs_levels(num_nodes_to_cache, node_list);
-  if (num_nodes_to_cache > 0)
-    _pFlashIndex->generate_cache_list_from_sample_queries(
-      warmup_query_file, 15, 6, num_nodes_to_cache, num_threads, node_list);
+  _pFlashIndex->cache_bfs_levels(num_nodes_to_cache, node_list);
+  //if (num_nodes_to_cache > 0)
+//    _pFlashIndex->generate_cache_list_from_sample_queries(
+//      warmup_query_file, 15, 6, num_nodes_to_cache, num_threads, node_list);
   _pFlashIndex->load_cache_list(node_list);
   node_list.clear();
   node_list.shrink_to_fit();
+  } else {
+    _pFlashIndex->cache_entire_graph_in_memory();
+  }
+  
 
   omp_set_num_threads(num_threads);
 
@@ -285,6 +290,7 @@ int main(int argc, char** argv) {
   unsigned              num_threads, K, W, num_nodes_to_cache;
   std::vector<unsigned> Lvec;
   bool                  use_reorder_data = false;
+  bool cache_all_graph_nodes = false;
 
   po::options_description desc{"Arguments"};
   try {
@@ -327,6 +333,9 @@ int main(int argc, char** argv) {
                        po::bool_switch()->default_value(false),
                        "Include full precision data in the index. Use only in "
                        "conjuction with compressed data on SSD.");
+    desc.add_options()("cache_all_graph_nodes",
+                       po::bool_switch()->default_value(false),
+                       "Optionally cache the entire graph in memory retaining all vector data on disk (suitable for high-dimensional data). Must be used with re-order data.");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -337,6 +346,9 @@ int main(int argc, char** argv) {
     po::notify(vm);
     if (vm["use_reorder_data"].as<bool>())
       use_reorder_data = true;
+    if (vm["cache_all_graph_nodes"].as<bool>())
+      cache_all_graph_nodes = true;
+
   } catch (const std::exception& ex) {
     std::cerr << ex.what() << '\n';
     return -1;
@@ -374,15 +386,15 @@ int main(int argc, char** argv) {
     if (data_type == std::string("float"))
       return search_disk_index<float>(
           metric, index_path_prefix, result_path_prefix, query_file, gt_file,
-          num_threads, K, W, num_nodes_to_cache, Lvec, use_reorder_data);
+          num_threads, K, W, num_nodes_to_cache, Lvec, use_reorder_data, cache_all_graph_nodes);
     else if (data_type == std::string("int8"))
       return search_disk_index<int8_t>(
           metric, index_path_prefix, result_path_prefix, query_file, gt_file,
-          num_threads, K, W, num_nodes_to_cache, Lvec, use_reorder_data);
+          num_threads, K, W, num_nodes_to_cache, Lvec, use_reorder_data, cache_all_graph_nodes);
     else if (data_type == std::string("uint8"))
       return search_disk_index<uint8_t>(
           metric, index_path_prefix, result_path_prefix, query_file, gt_file,
-          num_threads, K, W, num_nodes_to_cache, Lvec, use_reorder_data);
+          num_threads, K, W, num_nodes_to_cache, Lvec, use_reorder_data, cache_all_graph_nodes);
     else {
       std::cerr << "Unsupported data type. Use float or int8 or uint8"
                 << std::endl;

@@ -24,7 +24,7 @@
 #define MAX_N_SECTOR_READS 128
 #define MAX_PQ_CHUNKS 256
 
-#define FULL_PRECISION_REORDER_MULTIPLIER 3
+#define FULL_PRECISION_REORDER_MULTIPLIER 20
 
 namespace diskann {
   template<typename T>
@@ -77,7 +77,9 @@ namespace diskann {
     DISKANN_DLLEXPORT int  load(uint32_t num_threads, const char *index_prefix);
 #endif
 
-    DISKANN_DLLEXPORT void load_cache_list(std::vector<uint32_t> &node_list);
+    DISKANN_DLLEXPORT void load_cache_list(std::vector<uint32_t> &node_list, bool cache_only_graph = false);
+
+    DISKANN_DLLEXPORT void cache_entire_graph_in_memory();
 
     DISKANN_DLLEXPORT _u64 return_nd();
 
@@ -95,6 +97,8 @@ namespace diskann {
 
     DISKANN_DLLEXPORT void cache_bfs_levels(_u64 num_nodes_to_cache,
                                             std::vector<uint32_t> &node_list);
+
+    DISKANN_DLLEXPORT void cache_all_nodes();
 
     DISKANN_DLLEXPORT void cached_beam_search(
         const T *query, const _u64 k_search, const _u64 l_search, _u64 *res_ids,
