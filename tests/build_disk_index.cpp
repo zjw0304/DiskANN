@@ -17,6 +17,7 @@ int main(int argc, char** argv) {
   unsigned    num_threads, R, L, disk_PQ;
   float       B, M;
   bool        append_reorder_data = false;
+  bool use_opq = false;
 
   po::options_description desc{"Arguments"};
   try {
@@ -56,6 +57,9 @@ int main(int argc, char** argv) {
                        po::bool_switch()->default_value(false),
                        "Include full precision data in the index. Use only in "
                        "conjuction with compressed data on SSD.");
+    desc.add_options()("use_optimized_pq",
+                       po::bool_switch()->default_value(false),
+                       "Uses optimized PQ (by learning a rotation matrix and a compression scheme) instead of regular PQ.");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -66,6 +70,8 @@ int main(int argc, char** argv) {
     po::notify(vm);
     if (vm["append_reorder_data"].as<bool>())
       append_reorder_data = true;
+    if (vm["use_opq"].as<bool>())
+      use_opq = true;      
   } catch (const std::exception& ex) {
     std::cerr << ex.what() << '\n';
     return -1;
@@ -108,13 +114,13 @@ int main(int argc, char** argv) {
   try {
     if (data_type == std::string("int8"))
       return diskann::build_disk_index<int8_t>(
-          data_path.c_str(), index_path_prefix.c_str(), params.c_str(), metric);
+          data_path.c_str(), index_path_prefix.c_str(), params.c_str(), metric, use_opq);
     else if (data_type == std::string("uint8"))
       return diskann::build_disk_index<uint8_t>(
-          data_path.c_str(), index_path_prefix.c_str(), params.c_str(), metric);
+          data_path.c_str(), index_path_prefix.c_str(), params.c_str(), metric, use_opq);
     else if (data_type == std::string("float"))
       return diskann::build_disk_index<float>(
-          data_path.c_str(), index_path_prefix.c_str(), params.c_str(), metric);
+          data_path.c_str(), index_path_prefix.c_str(), params.c_str(), metric, use_opq);
     else {
       diskann::cerr << "Error. Unsupported data type" << std::endl;
       return -1;
