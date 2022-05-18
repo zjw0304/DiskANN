@@ -21,10 +21,10 @@
 #define MAX_GRAPH_DEGREE 512
 #define MAX_N_CMPS 16384
 #define SECTOR_LEN (_u64) 4096
-#define MAX_N_SECTOR_READS 128
-#define MAX_PQ_CHUNKS 256
+#define MAX_N_SECTOR_READS 1280
+#define MAX_PQ_CHUNKS 1024
 
-#define FULL_PRECISION_REORDER_MULTIPLIER 20
+#define FULL_PRECISION_REORDER_MULTIPLIER 10
 
 namespace diskann {
   template<typename T>
@@ -97,8 +97,6 @@ namespace diskann {
 
     DISKANN_DLLEXPORT void cache_bfs_levels(_u64 num_nodes_to_cache,
                                             std::vector<uint32_t> &node_list);
-
-    DISKANN_DLLEXPORT void cache_all_nodes();
 
     DISKANN_DLLEXPORT void cached_beam_search(
         const T *query, const _u64 k_search, const _u64 l_search, _u64 *res_ids,

@@ -948,6 +948,7 @@ namespace diskann {
     unsigned cmps = 0;
     unsigned hops = 0;
     unsigned num_ios = 0;
+    unsigned num_expansions = 0;
     unsigned k = 0;
 
     // cleared every iteration
@@ -961,7 +962,7 @@ namespace diskann {
         cached_nhoods;
     cached_nhoods.reserve(2 * beam_width);
 
-    while (k < cur_list_size) {
+    while (k < cur_list_size && num_expansions < l_search*1.5) {
       auto nk = cur_list_size;
       // clear iteration state
       frontier.clear();
@@ -975,6 +976,7 @@ namespace diskann {
       while (marker < cur_list_size && frontier.size() < beam_width &&
              num_seen < beam_width) {
         if (retset[marker].flag) {
+          num_expansions++;
           num_seen++;
           auto iter = nhood_cache.find(retset[marker].id);
           if (iter != nhood_cache.end()) {
@@ -1201,10 +1203,11 @@ namespace diskann {
       std::vector<AlignedRead> vec_read_reqs;
 
 
-      if (full_retset.size() > k_search * FULL_PRECISION_REORDER_MULTIPLIER)
+/*      if (full_retset.size() > k_search * FULL_PRECISION_REORDER_MULTIPLIER)
         full_retset.erase(
             full_retset.begin() + k_search * FULL_PRECISION_REORDER_MULTIPLIER,
-            full_retset.end());
+            full_retset.end()); */
+      full_retset.resize(std::min(k_search*FULL_PRECISION_REORDER_MULTIPLIER, full_retset.size()));
 
       for (size_t i = 0; i < full_retset.size(); ++i) {
         vec_read_reqs.emplace_back(

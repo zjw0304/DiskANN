@@ -64,7 +64,7 @@ int search_memory_index(diskann::Metric& metric, const std::string& index_path,
   std::cout.precision(2);
   std::string recall_string = "Recall@" + std::to_string(recall_at);
   std::cout << std::setw(4) << "Ls" << std::setw(12) << "QPS " << std::setw(18)
-            << "Avg dist cmps" << std::setw(20) << "Mean Latency (mus)"
+            << "Avg dist cmps" << std::setw(20) << "Mean Latency (mus)" << std::setw(20) << "95pc Latency (mus)"
             << std::setw(15) << "99.9 Latency"; 
   if (calc_recall_flag)
     std::cout << std::setw(12) << recall_string;
@@ -123,12 +123,14 @@ int search_memory_index(diskann::Metric& metric, const std::string& index_path,
         std::accumulate(latency_stats.begin(), latency_stats.end(), 0.0) /
         query_num;
 
+    float latency95 = latency_stats[(_u64) ((0.95)*latency_stats.size())];
+
     float avg_cmps =
         (float) std::accumulate(cmp_stats.begin(), cmp_stats.end(), 0) /
         (float) query_num;
 
     std::cout << std::setw(4) << L << std::setw(12) << qps << std::setw(18)
-              << avg_cmps << std::setw(20) << (float) mean_latency
+              << avg_cmps << std::setw(20) << (float) mean_latency << std::setw(20) << (float) latency95 
               << std::setw(15)
               << (float) latency_stats[(_u64)(0.999 * query_num)];
     if(calc_recall_flag) 
