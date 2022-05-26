@@ -110,10 +110,10 @@ int search_disk_index(
   std::vector<uint32_t> node_list;
   diskann::cout << "Caching " << num_nodes_to_cache
                 << " BFS nodes around medoid(s)" << std::endl;
-  _pFlashIndex->cache_bfs_levels(num_nodes_to_cache, node_list);
-  //if (num_nodes_to_cache > 0)
-//    _pFlashIndex->generate_cache_list_from_sample_queries(
-//      warmup_query_file, 15, 6, num_nodes_to_cache, num_threads, node_list);
+//  _pFlashIndex->cache_bfs_levels(num_nodes_to_cache, node_list);
+  if (num_nodes_to_cache > 0)
+    _pFlashIndex->generate_cache_list_from_sample_queries(
+      warmup_query_file, 15, 6, num_nodes_to_cache, num_threads, node_list);
   _pFlashIndex->load_cache_list(node_list);
   node_list.clear();
   node_list.shrink_to_fit();
@@ -168,8 +168,8 @@ int search_disk_index(
 
   std::string recall_string = "Recall@" + std::to_string(recall_at);
   diskann::cout << std::setw(6) << "L" << std::setw(12) << "Beamwidth"
-                << std::setw(16) << "QPS" << std::setw(16) << "Mean Latency" << std::setw(16) << "95 Latency"
-                << std::setw(16) << "99.9 Latency" << std::setw(16)
+                << std::setw(16) << "QPS" << std::setw(16) << "Mean Latency" << std::setw(16) << "98 Latency"
+                << std::setw(16) << "99 Latency" << std::setw(16)
                 << "Mean IOs" << std::setw(16)
                 << "99.9pc IOs" << std::setw(16) << "CPU (s)";
   if (calc_recall_flag) {
@@ -231,12 +231,12 @@ int search_disk_index(
         stats, query_num,
         [](const diskann::QueryStats& stats) { return stats.total_us; });
 
-    auto latency_999 = diskann::get_percentile_stats<float>(
-        stats, query_num, 0.999,
+    auto latency_98 = diskann::get_percentile_stats<float>(
+        stats, query_num, 0.98,
         [](const diskann::QueryStats& stats) { return stats.total_us; });
 
-    auto latency_95 = diskann::get_percentile_stats<float>(
-        stats, query_num, 0.95,
+    auto latency_99 = diskann::get_percentile_stats<float>(
+        stats, query_num, 0.99,
         [](const diskann::QueryStats& stats) { return stats.total_us; });
 
     auto mean_ios = diskann::get_mean_stats<unsigned>(
@@ -259,8 +259,8 @@ int search_disk_index(
     }
 
     diskann::cout << std::setw(6) << L << std::setw(12) << optimized_beamwidth
-                  << std::setw(16) << qps << std::setw(16) << mean_latency << std::setw(16) << latency_95 
-                  << std::setw(16) << latency_999 << std::setw(16) << mean_ios << std::setw(16) << ios_999 
+                  << std::setw(16) << qps << std::setw(16) << mean_latency << std::setw(16) << latency_98 
+                  << std::setw(16) << latency_99 << std::setw(16) << mean_ios << std::setw(16) << ios_999 
                   << std::setw(16) << mean_cpuus;
     if (calc_recall_flag) {
       diskann::cout << std::setw(16) << recall << std::endl;
